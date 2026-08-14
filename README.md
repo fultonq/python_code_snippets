@@ -82,3 +82,24 @@ python3 -m unittest test_tree_operations.py -v
 
 Inside interactive mode, type `help` for `insert-left`, `insert-right`,
 `delete-subtree`, and the traversal commands.
+
+## Bookstore sorting (bubble, selection, insertion, merge)
+
+`sorting_algorithms.py` sorts a **Riverside Campus Bookstore** inventory
+so students can view flash-sale titles from cheapest to most expensive.
+
+- **Bubble sort** — clerks swap adjacent books until the shelf is clean
+- **Selection sort** — pick the cheapest remaining title for the next slot
+- **Insertion sort** — unpack one book at a time onto an already-sorted shelf
+- **Merge sort** — two teams sort half the 15,335-SKU catalog, then merge
+
+Two Python books share a $79.99 price so the demo can show which
+algorithms are stable.
+
+```bash
+python3 sorting_algorithms.py
+python3 sorting_algorithms.py interactive
+python3 sorting_algorithms.py sort --algorithm merge --by price
+python3 sorting_algorithms.py sort --algorithm insertion --size 20
+python3 -m unittest test_sorting_algorithms.py -v
+```
