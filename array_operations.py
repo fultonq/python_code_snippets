@@ -1,25 +1,60 @@
 #!/usr/bin/env python3
 """
-Array mutation exercise for arr_nums (15,335 elements).
+Array mutation application for arr_nums (15,335 elements).
 
-This module demonstrates insert, delete, and replace operations at many
-index locations, with explicit validation and exception handling.
+This program builds a large list named arr_nums and lets you insert,
+delete, and replace values at arbitrary index locations. Indexes are
+checked before every mutation. Failures raise typed exceptions instead
+of crashing with a raw IndexError.
 
-Run the walkthrough:
-    python3 array_operations.py
+Modes:
+    python3 array_operations.py                 # scripted demonstration
+    python3 array_operations.py demo
+    python3 array_operations.py interactive     # menu / REPL application
+    python3 array_operations.py insert 0 HEAD
+    python3 array_operations.py delete -- -1
+    python3 array_operations.py replace 100 42
+    python3 array_operations.py get 0
+    python3 array_operations.py show
+    python3 array_operations.py append 99
+    python3 array_operations.py find 654
 
-Run the tests:
+Tests:
     python3 -m unittest test_array_operations.py -v
 """
 
 from __future__ import annotations
 
+import argparse
 import random
+import shlex
 import sys
-from typing import Any, Iterable, List, Optional, Sequence, Tuple
+from contextlib import contextmanager
+from typing import Any, Callable, Iterable, Iterator, List, Optional, Sequence, Tuple
 
 
 ARRAY_SIZE = 15335
+
+HELP_TEXT = """
+Commands (interactive mode)
+---------------------------
+  help                         Show this help text
+  length                       Print the current length of arr_nums
+  show [start] [count]         Print a window of values (default 0 10)
+  get INDEX                    Print the value at INDEX
+  insert INDEX VALUE           Insert VALUE so it occupies INDEX
+  append VALUE                 Insert VALUE at the end
+  delete INDEX                 Remove and print the value at INDEX
+  replace INDEX VALUE          Overwrite INDEX and print the old value
+  find VALUE                   Print the first index of VALUE
+  history [count]              Print recent mutation history (default 12)
+  demo                         Run the scripted demonstration on a copy
+  quit                         Exit interactive mode
+
+Negative indexes count from the end. Insert also accepts INDEX equal to
+the current length, which appends. Values that look like integers or
+floats are stored as numbers; everything else is kept as text.
+""".strip()
 
 
 class ArrayOperationError(Exception):
@@ -40,7 +75,54 @@ class InvalidValueError(ArrayOperationError, ValueError):
 
 
 class EmptyArrayError(ArrayOperationError):
-    """Raised when a delete is attempted on an empty array."""
+    """Raised when a delete, replace, or get is attempted on an empty array."""
+
+
+class CommandParseError(ArrayOperationError):
+    """Raised when an interactive or CLI command cannot be parsed."""
+
+
+def parse_cli_value(raw: str) -> Any:
+    """
+    Convert a user-supplied token into a stored array value.
+
+    Integer and float literals become numbers. The words true / false /
+    none (any case) become bool or None. Every other token stays a str.
+    """
+    if not isinstance(raw, str):
+        raise InvalidValueError(
+            f"value token must be a string, got {type(raw).__name__}"
+        )
+    lowered = raw.lower()
+    if lowered == "true":
+        return True
+    if lowered == "false":
+        return False
+    if lowered in {"none", "null"}:
+        return None
+    try:
+        return int(raw, 10)
+    except ValueError:
+        pass
+    try:
+        return float(raw)
+    except ValueError:
+        pass
+    return raw
+
+
+def parse_index_token(raw: str) -> int:
+    """Parse a decimal index token, including negative indexes."""
+    if not isinstance(raw, str):
+        raise InvalidIndexError(
+            f"index must be text that looks like an int, got {type(raw).__name__}"
+        )
+    try:
+        return int(raw, 10)
+    except ValueError as exc:
+        raise InvalidIndexError(
+            f"index must be an int, got {raw!r}"
+        ) from exc
 
 
 class ArrayManager:
@@ -52,6 +134,7 @@ class ArrayManager:
       * bounds and type checks before each mutation
       * a small operation history for later inspection
       * helpers for bulk insert / delete / replace work
+      * atomic bulk updates that roll back if any step fails
     """
 
     def __init__(
@@ -70,7 +153,7 @@ class ArrayManager:
         if values is not None:
             self.arr_nums: List[Any] = list(values)
         else:
-            if not isinstance(size, int):
+            if isinstance(size, bool) or not isinstance(size, int):
                 raise InvalidValueError(
                     f"size must be an integer, got {type(size).__name__}"
                 )
@@ -101,8 +184,11 @@ class ArrayManager:
         bool is a subclass of int in Python, so True/False are rejected
         explicitly to avoid treating them as 1 and 0.
         """
+        error_cls: type = (
+            InvalidIndexError if name in {"index", "start"} else InvalidValueError
+        )
         if isinstance(value, bool) or not isinstance(value, int):
-            raise InvalidIndexError(
+            raise error_cls(
                 f"{name} must be an int, got {type(value).__name__}: {value!r}"
             )
         return value
@@ -146,6 +232,54 @@ class ArrayManager:
                     f"valid range is 0..{max(upper, 0)}"
                 )
         return index
+
+    @contextmanager
+    def _atomic(self) -> Iterator[None]:
+        """
+        Restore arr_nums and history if the wrapped bulk operation fails.
+
+        Single-item insert / delete / replace stay eager. Bulk helpers
+        should either fully apply or leave the array unchanged.
+        """
+        backup_nums = self.arr_nums[:]
+        backup_hist = len(self.history)
+        try:
+            yield
+        except Exception:
+            self.arr_nums = backup_nums
+            del self.history[backup_hist:]
+            raise
+
+    def get(self, index: Any) -> Any:
+        """Return the value at `index` without changing arr_nums."""
+        try:
+            normalized = self._normalize_index(index, operation="get")
+            return self.arr_nums[normalized]
+        except ArrayOperationError:
+            raise
+        except Exception as exc:
+            raise ArrayOperationError(
+                f"unexpected failure during get at {index!r}: {exc}"
+            ) from exc
+
+    def append(self, value: Any) -> int:
+        """
+        Insert `value` at the end of arr_nums.
+
+        Returns the index where the value was stored.
+        """
+        index = len(self.arr_nums)
+        self.insert(index, value)
+        return index
+
+    def find(self, value: Any) -> int:
+        """Return the first index of `value`, or raise InvalidValueError."""
+        try:
+            return self.arr_nums.index(value)
+        except ValueError as exc:
+            raise InvalidValueError(
+                f"value {value!r} not found in arr_nums"
+            ) from exc
 
     def insert(self, index: Any, value: Any) -> None:
         """
@@ -224,21 +358,23 @@ class ArrayManager:
 
         Because each insert changes later indexes, callers should pass
         indexes relative to the array state just before that pair runs.
+        If any pair fails, earlier inserts in this call are rolled back.
         Returns the number of successful inserts.
         """
         if not isinstance(pairs, (list, tuple)):
             raise InvalidValueError(
                 "insert_many expects a sequence of (index, value) pairs"
             )
-        applied = 0
-        for item in pairs:
-            if not isinstance(item, (list, tuple)) or len(item) != 2:
-                raise InvalidValueError(
-                    f"each insert pair must be (index, value), got {item!r}"
-                )
-            self.insert(item[0], item[1])
-            applied += 1
-        return applied
+        with self._atomic():
+            applied = 0
+            for item in pairs:
+                if not isinstance(item, (list, tuple)) or len(item) != 2:
+                    raise InvalidValueError(
+                        f"each insert pair must be (index, value), got {item!r}"
+                    )
+                self.insert(item[0], item[1])
+                applied += 1
+            return applied
 
     def delete_many(self, indexes: Sequence[Any]) -> List[Any]:
         """
@@ -246,7 +382,8 @@ class ArrayManager:
 
         Sorting descending avoids shifting still-pending indexes. Duplicate
         indexes after that sort are rejected so a caller cannot silently
-        delete the wrong neighbor.
+        delete the wrong neighbor. The array is unchanged if validation
+        fails.
         """
         if not isinstance(indexes, (list, tuple)):
             raise InvalidValueError("delete_many expects a sequence of indexes")
@@ -262,10 +399,11 @@ class ArrayManager:
                 f"delete_many received duplicate indexes: {indexes!r}"
             )
 
-        removed: List[Any] = []
-        for index in unique_sorted:
-            removed.append(self.delete(index))
-        return removed
+        with self._atomic():
+            removed: List[Any] = []
+            for index in unique_sorted:
+                removed.append(self.delete(index))
+            return removed
 
     def replace_many(self, pairs: Sequence[Tuple[Any, Any]]) -> List[Any]:
         """Replace several (index, value) pairs; return previous values."""
@@ -273,14 +411,20 @@ class ArrayManager:
             raise InvalidValueError(
                 "replace_many expects a sequence of (index, value) pairs"
             )
-        previous_values: List[Any] = []
+        prepared: List[Tuple[int, Any]] = []
         for item in pairs:
             if not isinstance(item, (list, tuple)) or len(item) != 2:
                 raise InvalidValueError(
                     f"each replace pair must be (index, value), got {item!r}"
                 )
-            previous_values.append(self.replace(item[0], item[1]))
-        return previous_values
+            prepared.append(
+                (self._normalize_index(item[0], operation="replace"), item[1])
+            )
+        with self._atomic():
+            previous_values: List[Any] = []
+            for index, value in prepared:
+                previous_values.append(self.replace(index, value))
+            return previous_values
 
     def snapshot(self, start: int = 0, count: int = 10) -> List[Any]:
         """Return a copy of a short window of arr_nums for display."""
@@ -300,7 +444,7 @@ def _print_section(title: str) -> None:
     print("=" * 72)
 
 
-def _run_step(label: str, action) -> bool:
+def _run_step(label: str, action: Callable[[], None]) -> bool:
     """
     Execute one demonstration step and keep going if it fails.
 
@@ -318,7 +462,7 @@ def _run_step(label: str, action) -> bool:
         return False
 
 
-def demonstrate_operations() -> int:
+def demonstrate_operations(manager: Optional[ArrayManager] = None) -> int:
     """
     Run a scripted walkthrough of insert, delete, and replace.
 
@@ -327,7 +471,8 @@ def demonstrate_operations() -> int:
     the demonstration finishes without an unexpected crash.
     """
     try:
-        manager = ArrayManager(size=ARRAY_SIZE, seed=42)
+        if manager is None:
+            manager = ArrayManager(size=ARRAY_SIZE, seed=42)
     except ArrayOperationError as exc:
         print(f"Failed to create arr_nums: {exc}", file=sys.stderr)
         return 1
@@ -439,12 +584,262 @@ def demonstrate_operations() -> int:
     return 0
 
 
-def main() -> int:
+def handle_repl_line(manager: ArrayManager, line: str) -> Tuple[str, bool]:
+    """
+    Execute one interactive command against `manager`.
+
+    Returns (message, should_quit). Blank lines produce an empty message
+    and do not exit. Unknown commands raise CommandParseError.
+    """
+    stripped = line.strip()
+    if not stripped:
+        return "", False
+
     try:
-        return demonstrate_operations()
+        tokens = shlex.split(stripped)
+    except ValueError as exc:
+        raise CommandParseError(f"could not parse command: {exc}") from exc
+
+    command = tokens[0].lower()
+    args = tokens[1:]
+
+    if command in {"quit", "exit", "q"}:
+        return "Goodbye.", True
+    if command in {"help", "?"}:
+        return HELP_TEXT, False
+    if command in {"length", "len"}:
+        return f"length: {len(manager)}", False
+    if command == "show":
+        start = parse_index_token(args[0]) if len(args) >= 1 else 0
+        count = parse_index_token(args[1]) if len(args) >= 2 else 10
+        window = manager.snapshot(start, count)
+        return f"arr_nums[{start}:{start + count}] ({len(window)} item(s)): {window}", False
+    if command == "get":
+        if len(args) != 1:
+            raise CommandParseError("usage: get INDEX")
+        index = parse_index_token(args[0])
+        return f"arr_nums[{index}] = {manager.get(index)!r}", False
+    if command == "insert":
+        if len(args) < 2:
+            raise CommandParseError("usage: insert INDEX VALUE")
+        index = parse_index_token(args[0])
+        value = parse_cli_value(" ".join(args[1:]))
+        manager.insert(index, value)
+        return (
+            f"inserted {value!r} at {index}; length is now {len(manager)}"
+        ), False
+    if command == "append":
+        if len(args) < 1:
+            raise CommandParseError("usage: append VALUE")
+        value = parse_cli_value(" ".join(args))
+        index = manager.append(value)
+        return f"appended {value!r} at {index}; length is now {len(manager)}", False
+    if command == "delete":
+        if len(args) != 1:
+            raise CommandParseError("usage: delete INDEX")
+        index = parse_index_token(args[0])
+        removed = manager.delete(index)
+        return (
+            f"deleted {removed!r} from {index}; length is now {len(manager)}"
+        ), False
+    if command == "replace":
+        if len(args) < 2:
+            raise CommandParseError("usage: replace INDEX VALUE")
+        index = parse_index_token(args[0])
+        value = parse_cli_value(" ".join(args[1:]))
+        previous = manager.replace(index, value)
+        return f"replaced {previous!r} with {value!r} at {index}", False
+    if command == "find":
+        if len(args) < 1:
+            raise CommandParseError("usage: find VALUE")
+        value = parse_cli_value(" ".join(args))
+        index = manager.find(value)
+        return f"{value!r} first occurs at index {index}", False
+    if command == "history":
+        count = parse_index_token(args[0]) if args else 12
+        if count < 0:
+            raise InvalidValueError(f"history count must be >= 0, got {count}")
+        lines = manager.history[-count:]
+        if not lines:
+            return "(history is empty)", False
+        return "\n".join(f"  - {entry}" for entry in lines), False
+    if command == "demo":
+        demo_manager = ArrayManager(values=list(manager.arr_nums))
+        demonstrate_operations(demo_manager)
+        return "demonstration finished (interactive array was not changed).", False
+
+    raise CommandParseError(
+        f"unknown command {command!r}; type 'help' for a list"
+    )
+
+
+def run_interactive(
+    manager: ArrayManager,
+    input_fn: Callable[[str], str] = input,
+) -> int:
+    """
+    Read commands until the user quits or stdin closes.
+
+    `input_fn` is injectable so tests can drive the loop without a
+    real terminal. Returns 0 on a clean exit.
+    """
+    print("arr_nums interactive mode. Type 'help' for commands, 'quit' to exit.")
+    print(f"starting length: {len(manager)}")
+    while True:
+        try:
+            line = input_fn(f"arr_nums[{len(manager)}]> ")
+        except EOFError:
+            print()
+            print("Goodbye.")
+            return 0
+        except KeyboardInterrupt:
+            print()
+            print("Interrupted. Type 'quit' to exit.")
+            continue
+        try:
+            message, should_quit = handle_repl_line(manager, line)
+        except ArrayOperationError as exc:
+            print(f"{type(exc).__name__}: {exc}")
+            continue
+        except Exception as exc:
+            print(f"unexpected {type(exc).__name__}: {exc}")
+            continue
+        if message:
+            print(message)
+        if should_quit:
+            return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Create the top-level CLI parser, including mutation subcommands."""
+    parser = argparse.ArgumentParser(
+        description=(
+            "Insert, delete, and replace values in arr_nums, "
+            "a list of 15,335 elements by default."
+        )
+    )
+    parser.add_argument(
+        "--size",
+        type=int,
+        default=ARRAY_SIZE,
+        help=f"initial length when --values is not set (default {ARRAY_SIZE})",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="RNG seed for the generated starting values (default 42)",
+    )
+    parser.add_argument(
+        "--values",
+        metavar="ITEMS",
+        help="comma-separated starting values; overrides --size",
+    )
+
+    sub = parser.add_subparsers(dest="command")
+    sub.add_parser("demo", help="run the scripted insert/delete/replace walkthrough")
+    sub.add_parser("interactive", help="open the command prompt")
+
+    insert_parser = sub.add_parser("insert", help="insert VALUE at INDEX")
+    insert_parser.add_argument("index", help="index (use -- before a negative index)")
+    insert_parser.add_argument("value", nargs="+", help="value to insert")
+
+    delete_parser = sub.add_parser("delete", help="delete the item at INDEX")
+    delete_parser.add_argument("index", help="index (use -- before a negative index)")
+
+    replace_parser = sub.add_parser("replace", help="replace INDEX with VALUE")
+    replace_parser.add_argument("index", help="index (use -- before a negative index)")
+    replace_parser.add_argument("value", nargs="+", help="replacement value")
+
+    get_parser = sub.add_parser("get", help="print the item at INDEX")
+    get_parser.add_argument("index", help="index (use -- before a negative index)")
+
+    show_parser = sub.add_parser("show", help="print a window of arr_nums")
+    show_parser.add_argument("start", nargs="?", default="0")
+    show_parser.add_argument("count", nargs="?", default="10")
+
+    append_parser = sub.add_parser("append", help="insert VALUE at the end")
+    append_parser.add_argument("value", nargs="+", help="value to append")
+
+    find_parser = sub.add_parser("find", help="print the first index of VALUE")
+    find_parser.add_argument("value", nargs="+", help="value to search for")
+
+    return parser
+
+
+def _manager_from_args(args: argparse.Namespace) -> ArrayManager:
+    """Build arr_nums from CLI flags, including optional --values."""
+    if args.values is not None:
+        raw_items = [item.strip() for item in args.values.split(",")]
+        parsed = [parse_cli_value(item) for item in raw_items if item != ""]
+        return ArrayManager(values=parsed)
+    return ArrayManager(size=args.size, seed=args.seed)
+
+
+def dispatch(args: argparse.Namespace) -> int:
+    """Run the selected CLI command against a freshly built arr_nums."""
+    command = args.command or "demo"
+    manager = _manager_from_args(args)
+
+    if command == "demo":
+        return demonstrate_operations(manager)
+    if command == "interactive":
+        return run_interactive(manager)
+    if command == "insert":
+        index = parse_index_token(args.index)
+        value = parse_cli_value(" ".join(args.value))
+        manager.insert(index, value)
+        print(f"inserted {value!r} at {index}; length is now {len(manager)}")
+        print(f"window: {manager.snapshot(max(index, 0), 5)}")
+        return 0
+    if command == "delete":
+        index = parse_index_token(args.index)
+        removed = manager.delete(index)
+        print(f"deleted {removed!r} from {index}; length is now {len(manager)}")
+        return 0
+    if command == "replace":
+        index = parse_index_token(args.index)
+        value = parse_cli_value(" ".join(args.value))
+        previous = manager.replace(index, value)
+        print(f"replaced {previous!r} with {value!r} at {index}")
+        return 0
+    if command == "get":
+        index = parse_index_token(args.index)
+        print(f"arr_nums[{index}] = {manager.get(index)!r}")
+        return 0
+    if command == "show":
+        start = parse_index_token(args.start)
+        count = parse_index_token(args.count)
+        window = manager.snapshot(start, count)
+        print(f"length: {len(manager)}")
+        print(f"arr_nums[{start}:{start + count}] = {window}")
+        return 0
+    if command == "append":
+        value = parse_cli_value(" ".join(args.value))
+        index = manager.append(value)
+        print(f"appended {value!r} at {index}; length is now {len(manager)}")
+        return 0
+    if command == "find":
+        value = parse_cli_value(" ".join(args.value))
+        index = manager.find(value)
+        print(f"{value!r} first occurs at index {index}")
+        return 0
+
+    print(f"unknown command: {command}", file=sys.stderr)
+    return 2
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = build_parser()
+    try:
+        args = parser.parse_args(list(argv) if argv is not None else None)
+        return dispatch(args)
     except KeyboardInterrupt:
         print("\nInterrupted.", file=sys.stderr)
         return 130
+    except ArrayOperationError as exc:
+        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
     except Exception as exc:
         print(f"Unhandled error: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
