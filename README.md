@@ -103,3 +103,29 @@ python3 sorting_algorithms.py sort --algorithm merge --by price
 python3 sorting_algorithms.py sort --algorithm insertion --size 20
 python3 -m unittest test_sorting_algorithms.py -v
 ```
+
+## Advanced Python features (Riverside Student Swap)
+
+`campus_marketplace.py` is a campus buy/sell desk that uses the language
+features together on one job: Maya shops used textbooks, staff pick bins,
+then checkout applies coupons and tax.
+
+| Feature | Where it shows up |
+| --- | --- |
+| **list** | cart, undo stack, SKUs in a bin |
+| **dict** | SKU → listing; `(building, aisle, bin)` → bin contents |
+| **tuple** | immutable warehouse coordinate and dict key |
+| **set** | listing tags, claimed students, interest ∩ tags |
+| **list comprehension** | search hits, items under $20, pick stops |
+| **generator** | `iter_catalog()`, `low_stock_alerts()` (`yield` / `yield from`) |
+| **decorator** | `@timed`, `@audit`, `@require_sku` |
+| **iterator** | `PickRoute` (`__iter__`, `__next__`) |
+| **callable** | `PercentageOff` (`__call__`) stacked coupons |
+| **closure** | `make_tax_calculator(0.0825)`, `make_budget_filter(25)` |
+| **`__repr__` / `__str__` / `__eq__`** | debugger dump, shelf label, SKU identity |
+
+```bash
+python3 campus_marketplace.py
+python3 -m unittest test_campus_marketplace.py -v
+```
+
