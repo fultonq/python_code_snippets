@@ -57,3 +57,28 @@ them as flags: `delete -- -1`.
 ```bash
 python3 -m unittest test_array_operations.py -v
 ```
+
+## tree_nums insert / delete / replace
+
+`tree_operations.py` is the same set of operations on a **binary tree ADT**.
+`tree_nums` is a complete binary tree of **15,335** nodes by default. Nodes
+are addressed by level-order index (root is 0, left child of `i` is
+`2*i+1`, right child is `2*i+2`).
+
+- **insert** adds a child of an existing node (left slot first)
+- **delete** removes one node: a leaf is unlinked, one child is promoted,
+  two children lift the inorder successor
+- **replace** changes a node's value and leaves the shape alone
+
+```bash
+python3 tree_operations.py
+python3 tree_operations.py interactive
+python3 tree_operations.py --values 4,2,6,1,3,5,7 show
+python3 tree_operations.py --values 4,2,6 append 1
+python3 tree_operations.py --values 4,2,6,1,3,5,7 delete 0
+python3 tree_operations.py --values 4,2,6,1,3,5,7 replace 0 99
+python3 -m unittest test_tree_operations.py -v
+```
+
+Inside interactive mode, type `help` for `insert-left`, `insert-right`,
+`delete-subtree`, and the traversal commands.
