@@ -204,6 +204,23 @@ python3 -m edumetrics export --out ccps_report.json
 python3 -m unittest test_edumetrics.py -v
 ```
 
+#### Faker test data (all 24 CCPS buildings)
+
+With `pip install faker`, the `--faker` flag generates realistic student
+and teacher names across the full building list — 7 high schools, 8
+middle schools, and 9 elementary schools (Piccowaxen, J.C. Parks,
+Dr. Gustavus Brown, ...). Grade levels match the building type, output
+is seeded/deterministic, and every metric runs unchanged on it.
+
+```bash
+python3 -m edumetrics --faker district
+python3 -m edumetrics --faker roster            # preview generated names
+python3 -m edumetrics --faker equity --subject ELA
+python3 -m edumetrics --faker --seed 7 export --out ccps_faker.json
+python3 -m unittest test_faker_data.py -v
+```
+
+
 ### Dashboards (Tcl/Tk GUI and Textual TUI)
 
 Two front-ends render the same metrics through `edumetrics/views.py`:

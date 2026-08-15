@@ -129,8 +129,14 @@ def build_parser() -> argparse.ArgumentParser:
         description="Education metrics for Charles County Public Schools (MD)",
     )
     parser.add_argument("--seed", type=int, default=2026, help="data seed (default 2026)")
+    parser.add_argument(
+        "--faker",
+        action="store_true",
+        help="generate people with the faker package (all 24 CCPS buildings)",
+    )
     sub = parser.add_subparsers(dest="command")
     sub.add_parser("district", help="district-wide rollup")
+    sub.add_parser("roster", help="preview generated student names (faker demo)")
     school = sub.add_parser("school", help="one school's report card")
     school.add_argument("name")
     teachers = sub.add_parser("teachers", help="teacher effectiveness table")
@@ -148,10 +154,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     try:
         args = parser.parse_args(list(argv) if argv is not None else None)
-        district = build_ccps_district(seed=args.seed)
+        if args.faker:
+            from edumetrics.faker_data import build_ccps_district_faker
+
+            district = build_ccps_district_faker(seed=args.seed)
+        else:
+            district = build_ccps_district(seed=args.seed)
         command = args.command or "district"
         if command == "district":
             _show_district(district)
+        elif command == "roster":
+            from edumetrics.faker_data import roster_preview
+
+            _print_header("Roster preview")
+            for line in roster_preview(district, count=10):
+                print(line)
         elif command == "school":
             _show_school(district, args.name)
         elif command == "teachers":
