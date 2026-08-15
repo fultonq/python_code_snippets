@@ -1,0 +1,10 @@
+# Terminal dashboard (edumetrics_tui.py)
+textual>=8.0
+rich>=13.0
+
+# Realistic synthetic people for edumetrics (--faker flag, test data)
+faker>=30.0
+
+# Desktop dashboard (edumetrics_tk.py) uses tkinter from the standard
+# library; on Debian/Ubuntu install the OS package instead of pip:
+#   sudo apt-get install python3-tk
