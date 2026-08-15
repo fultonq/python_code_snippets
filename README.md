@@ -204,6 +204,27 @@ python3 -m edumetrics export --out ccps_report.json
 python3 -m unittest test_edumetrics.py -v
 ```
 
+### Dashboards (Tcl/Tk GUI and Textual TUI)
+
+Two front-ends render the same metrics through `edumetrics/views.py`:
+
+- **`edumetrics_tk.py`** — native Tcl/Tk window (tkinter). Notebook tabs
+  for Schools / Teachers / Curriculum / Equity, click-to-sort column
+  headers, a school dropdown that filters the Teachers tab, scrollbars,
+  and shortcuts: `Ctrl+1..4` tabs, `Ctrl+R` reload, `Ctrl+E` export,
+  `Ctrl+Q` quit. Needs a display (`sudo apt-get install python3-tk`).
+- **`edumetrics_tui.py`** — Textual/Rich terminal dashboard with full
+  keyboard **and mouse** support (click tabs, wheel-scroll tables).
+  Keys: `1-4` tabs, `r` reload, `x` export JSON, `q` quit.
+  Install with `pip install -r requirements.txt`.
+
+```bash
+python3 edumetrics_tui.py          # terminal dashboard
+python3 edumetrics_tk.py           # desktop window
+python3 -m unittest test_metrics_frontends.py -v
+```
+
+
 
 
 
