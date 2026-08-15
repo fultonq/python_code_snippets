@@ -160,4 +160,21 @@ python3 graph_algorithms.py plan
 python3 -m unittest test_graph_algorithms.py -v
 ```
 
+## Riverside Campus Hub (everything together)
+
+`riverside_hub.py` is the comprehensive application. Maya Chen's morning
+runs through every module in this repo: ID tap (hash map), advising
+waitlist (array), campus directory (tree), flash-sale prices (merge
+sort), used-book checkout (marketplace), shuttle routing (BFS vs
+Dijkstra), and a CS degree plan (topological sort).
+
+```bash
+python3 riverside_hub.py
+python3 riverside_hub.py tap R1002341
+python3 riverside_hub.py ride Union Health
+python3 riverside_hub.py interactive
+python3 -m unittest test_riverside_hub.py -v
+```
+
+
 
