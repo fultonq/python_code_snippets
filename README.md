@@ -176,5 +176,34 @@ python3 riverside_hub.py interactive
 python3 -m unittest test_riverside_hub.py -v
 ```
 
+## Education metrics — Charles County Public Schools (`edumetrics/`)
+
+A production-style metrics package for the CCPS district (North Point,
+La Plata, Thomas Stone, Westlake, etc.) measuring three pillars:
+
+- **Students** — attendance, chronic absenteeism (< 90%), GPA, MCAP
+  proficiency (levels 3-4), and growth percentiles from fall/spring scores
+- **Teachers** — composite of median student growth (50%), Danielson-style
+  evaluation (30%), and PD hours (20%), banded into effectiveness ratings
+- **Curriculum** — MD standards coverage, assessment alignment, pacing
+  variance, and course pass rates, with untaught standards listed
+- **Equity** — FARMS / ELL / IEP proficiency gaps, flagged past 10 points
+
+All records validate on construction and the district cross-checks
+foreign keys, so bad rows fail at load time rather than mid-report.
+Data is a deterministic synthetic generator (`--seed`); swap in a real
+SIS/CSV export without touching the metrics.
+
+```bash
+python3 -m edumetrics district
+python3 -m edumetrics school "North Point High"
+python3 -m edumetrics teachers --school "La Plata High" --top 5
+python3 -m edumetrics curriculum
+python3 -m edumetrics equity --subject Math
+python3 -m edumetrics export --out ccps_report.json
+python3 -m unittest test_edumetrics.py -v
+```
+
+
 
 
