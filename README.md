@@ -129,3 +129,35 @@ python3 campus_marketplace.py
 python3 -m unittest test_campus_marketplace.py -v
 ```
 
+## Hash map (campus ID office)
+
+`hashmap.py` is a **separate-chaining hash table** — not Python's `dict`.
+The demo is the Riverside ID office: tap a student ID, hash it, jump to
+the meal-plan / locker record. Colliding SIDs share a bucket chain;
+the table doubles when the load factor crosses 0.75.
+
+```bash
+python3 hashmap.py
+python3 hashmap.py lookup R1002341
+python3 -m unittest test_hashmap.py -v
+```
+
+## Graph algorithms (shuttle + course planner)
+
+`graph_algorithms.py` is an adjacency-list graph with BFS, DFS,
+Dijkstra, topological sort, connected components, and cycle detection.
+
+- **Shuttle map** (undirected, weighted): fewest hops vs fastest ride.
+  Union → Health is one express hop (20 min) but the local three-hop
+  route is 15 minutes — BFS and Dijkstra disagree on purpose.
+- **Degree planner** (directed): a legal semester order from
+  prerequisites; a cycle in the catalog is rejected.
+
+```bash
+python3 graph_algorithms.py
+python3 graph_algorithms.py path Union Health
+python3 graph_algorithms.py plan
+python3 -m unittest test_graph_algorithms.py -v
+```
+
+
