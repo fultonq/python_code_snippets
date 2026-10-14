@@ -27,7 +27,7 @@ Open `enrich_permits.py` and edit the configuration block near the top if needed
 | `OUTPUT_CSV` | Final enriched CSV path | `output/enriched_permits_2026.csv` |
 | `MAX_FEATURES` | Limit rows for testing (`None` = all) | `None` |
 | `LRS_SEARCH_RADIUS_METERS` | Nearest-road search radius (0–200) | `100` |
-| `LRS_WORKERS` | Parallel LRS request workers | `8` |
+| `LRS_WORKERS` | Parallel LRS request workers | `20` |
 
 Paths use `pathlib.Path`, so the script is safe on Windows (`C:\...`) and Unix (`/...`).
 

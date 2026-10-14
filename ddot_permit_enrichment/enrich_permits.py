@@ -47,7 +47,7 @@ MAX_FEATURES: Optional[int] = None
 
 # LRS nearest-road search
 LRS_SEARCH_RADIUS_METERS = 100  # must be 0–200
-LRS_WORKERS = 8
+LRS_WORKERS = 20
 LRS_RETRY_COUNT = 3
 LRS_RETRY_SLEEP_SECONDS = 1.5
 
@@ -107,6 +107,10 @@ def setup_logging() -> None:
 
 SESSION = requests.Session()
 SESSION.headers.update({"User-Agent": USER_AGENT})
+# Allow parallel LRS workers without exhausting the default pool (size 10).
+adapter = requests.adapters.HTTPAdapter(pool_connections=LRS_WORKERS, pool_maxsize=LRS_WORKERS)
+SESSION.mount("https://", adapter)
+SESSION.mount("http://", adapter)
 
 
 def get_json(url: str, params: Dict[str, Any]) -> Dict[str, Any]:
