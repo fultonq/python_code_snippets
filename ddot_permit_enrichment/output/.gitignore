@@ -1,0 +1,4 @@
+enrichment.log
+lrs_cache.csv
+# Final CSV is committed after a full run; ignore while regenerating locally if desired.
+# enriched_permits_2026.csv
