@@ -128,3 +128,9 @@ ddot_permit_enrichment/
 - `TrackingNumber` is used as the permit-application key because `PermitNumber` can be null for applications that are not yet issued.
 - “Highest” FHWA class means **most significant roadway**, i.e. smallest FHWA code.
 - Partial runs are supported via `MAX_FEATURES` and the LRS cache.
+- A full run against the live feed during development produced **4,983** rows (DC Water / PEPCO / Washington Gas). Mobile Crane Work Zone had **0** matching utility records at that time; the filter still includes it for future data.
+- Package a submission zip with:
+
+```bat
+python package_submission.py FirstName MiddleInitial LastName
+```

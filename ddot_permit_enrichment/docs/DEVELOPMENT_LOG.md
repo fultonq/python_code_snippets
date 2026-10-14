@@ -157,7 +157,21 @@ CSV: location class + highest class per permit
 - [x] README documents Windows run steps
 - [x] Script uses pathlib for cross-platform paths
 
-## 9. Future improvements (if more time)
+## 9. Full-run results (live feed at development time)
+
+| Metric | Value |
+|---|---|
+| Filtered location rows | 4,983 |
+| Unique coordinates | 2,611 |
+| Utilities | DC Water 1,911 · Washington Gas 1,669 · PEPCO 1,403 |
+| Permit types in result | Construction Staging Area only |
+| Mobile Crane + utility (2026) | 0 rows in live feed |
+| FHWA matched | 4,981 / 4,983 (99.96%) |
+| Unmatched | 2 alley-only locations |
+| Multi-location permits | 852 |
+| Highest-class rollup QA | Pass on sampled multi-location permits |
+
+## 10. Future improvements (if more time)
 
 - Add MAR address → SubBlockKey fallback for points that miss LRS.
 - Write unit tests with recorded JSON fixtures (offline CI).
